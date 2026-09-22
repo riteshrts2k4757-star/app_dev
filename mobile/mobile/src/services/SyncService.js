@@ -59,6 +59,10 @@ export const startSyncManager = () => {
       const data = await fetchNodeMcuData();
       updateState('nodemcuWifi', true);
       updateState('nodemcuApi', true);
+      
+      if (data) {
+        DeviceEventEmitter.emit('RawNodeMcuData', data);
+      }
 
       if (data && data.container) {
         const record = {

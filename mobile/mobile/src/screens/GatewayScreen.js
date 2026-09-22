@@ -15,9 +15,12 @@ const GatewayScreen = () => {
 
   const [wifiName, setWifiName] = useState('Checking...');
   const [ipAddress, setIpAddress] = useState('---.---.---.---');
+  const [rawData, setRawData] = useState(null);
+  const [showRawData, setShowRawData] = useState(false);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('SystemStateChange', (s) => setSysState({ ...s }));
+    const rawSub = DeviceEventEmitter.addListener('RawNodeMcuData', (data) => setRawData(data));
     
     fetchWifiDetails();
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -26,6 +29,7 @@ const GatewayScreen = () => {
 
     return () => {
       sub.remove();
+      rawSub.remove();
       unsubscribe();
     };
   }, []);
@@ -125,6 +129,18 @@ const GatewayScreen = () => {
           <Text style={[styles.outlineBtnText, { color: colors.danger }]}>Disconnect</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity style={styles.rawBtn} onPress={() => setShowRawData(!showRawData)}>
+        <Text style={styles.rawBtnText}>{showRawData ? 'Hide Raw JSON Data' : 'View Raw JSON Data'}</Text>
+      </TouchableOpacity>
+
+      {showRawData && (
+        <View style={styles.rawContainer}>
+          <Text style={styles.rawText}>
+            {rawData ? JSON.stringify(rawData, null, 2) : 'No data received yet...'}
+          </Text>
+        </View>
+      )}
 
       <View style={{ height: 24 }} />
     </ScrollView>
@@ -226,6 +242,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 15,
     color: colors.text,
+  },
+  rawBtn: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rawBtnText: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  rawContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 8,
+  },
+  rawText: {
+    color: '#00FF00',
+    fontFamily: 'monospace',
+    fontSize: 12,
   },
 });
 
