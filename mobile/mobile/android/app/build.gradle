@@ -118,8 +118,4 @@ dependencies {
     }
 }
 
-// Link react-native-vector-icons fonts into the APK so Feather icons render correctly
-project.ext.vectoricons = [
-    iconFontNames: [ 'Feather.ttf' ]
-]
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+// Vector icons fonts are now copied manually into assets/fonts to avoid gradle errors
