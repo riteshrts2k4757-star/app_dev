@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, DeviceEventEmitter, Alert, PermissionsAndroid } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import WifiManager from 'react-native-wifi-reborn';
 import { colors } from '../theme/colors';
-
 const GatewayScreen = () => {
   const [sysState, setSysState] = useState({
     nodemcuWifi: false,
@@ -65,21 +63,10 @@ const GatewayScreen = () => {
   };
 
   const connectToGateway = async () => {
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
-      Alert.alert('Permission Denied', 'Location permission is required to connect to WiFi.');
-      return;
-    }
-
-    try {
-      Alert.alert('Connecting...', 'Attempting to connect to FarmTrace_Gateway...');
-      await WifiManager.connectToProtectedSSID('FarmTrace_Gateway', 'farmtrace123', false, false);
-      Alert.alert('Success', 'Connected to Gateway WiFi');
-      fetchWifiDetails();
-    } catch (error) {
-      Alert.alert('Connection Failed', 'Could not connect to FarmTrace_Gateway. Make sure the NodeMCU is powered on.');
-      console.error(error);
-    }
+    Alert.alert(
+      'Manual Connection Required', 
+      'Due to Android restrictions, please open your phone WiFi settings and connect to "FarmTrace_Gateway". Once connected, return to this app.'
+    );
   };
 
   const isConnected = sysState.nodemcuWifi;
