@@ -1,0 +1,23 @@
+const express = require('express');
+const router = express.Router();
+const Shipment = require('../models/Shipment');
+
+router.get('/', async (req, res) => {
+  try {
+    const shipments = await Shipment.find().populate('driverId');
+    res.json({ success: true, data: shipments });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const shipment = await Shipment.findById(req.params.id);
+    res.json({ success: true, data: shipment });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
+
+module.exports = router;
