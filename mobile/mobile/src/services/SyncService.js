@@ -23,30 +23,39 @@ const updateState = (key, value) => {
 };
 
 const setupMQTT = () => {
-  const clientId = `farmtrace-driver-${Math.random().toString(16).substring(2, 10)}`;
-  mqttClient = new Paho.Client(MQTT_BROKER, MQTT_PORT, "/mqtt", clientId);
-
-  mqttClient.onConnectionLost = (responseObject) => {
-    updateState('mqtt', false);
-    if (responseObject.errorCode !== 0) {
-      console.log("MQTT Connection Lost:", responseObject.errorMessage);
-      setTimeout(setupMQTT, 5000); // Reconnect
+  try {
+    const clientId = `farmtrace-driver-${Math.random().toString(16).substring(2, 10)}`;
+    if (!Paho || !Paho.Client) {
+      console.warn("Paho MQTT client is unavailable");
+      return;
     }
-  };
+    mqttClient = new Paho.Client(MQTT_BROKER, MQTT_PORT, "/mqtt", clientId);
 
-  mqttClient.connect({
-    onSuccess: () => {
-      console.log("MQTT Connected");
-      updateState('mqtt', true);
-      updateState('internet', true);
-    },
-    onFailure: (err) => {
-      console.log("MQTT Connection Failed", err);
+    mqttClient.onConnectionLost = (responseObject) => {
       updateState('mqtt', false);
-      setTimeout(setupMQTT, 5000); // Reconnect
-    },
-    useSSL: true
-  });
+      if (responseObject && responseObject.errorCode !== 0) {
+        console.log("MQTT Connection Lost:", responseObject.errorMessage);
+        setTimeout(setupMQTT, 5000); // Reconnect
+      }
+    };
+
+    mqttClient.connect({
+      onSuccess: () => {
+        console.log("MQTT Connected");
+        updateState('mqtt', true);
+        updateState('internet', true);
+      },
+      onFailure: (err) => {
+        console.log("MQTT Connection Failed", err);
+        updateState('mqtt', false);
+        setTimeout(setupMQTT, 5000); // Reconnect
+      },
+      useSSL: true
+    });
+  } catch (err) {
+    console.warn("Failed to initialize MQTT:", err);
+    updateState('mqtt', false);
+  }
 };
 
 export const startSyncManager = () => {
@@ -87,9 +96,13 @@ export const startSyncManager = () => {
 
         // Publish to MQTT if connected
         if (state.mqtt && mqttClient) {
-          const message = new Paho.Message(JSON.stringify(record));
-          message.destinationName = `farmtrace/CONTAINER-001/telemetry`;
-          mqttClient.send(message);
+          try {
+            const message = new Paho.Message(JSON.stringify(record));
+            message.destinationName = `farmtrace/CONTAINER-001/telemetry`;
+            mqttClient.send(message);
+          } catch (mqttErr) {
+            console.warn("MQTT send error:", mqttErr);
+          }
         }
       }
     } catch (e) {
