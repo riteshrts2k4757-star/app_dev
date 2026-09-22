@@ -10,6 +10,7 @@ import MonitorScreen from '../screens/MonitorScreen';
 import LogbookScreen from '../screens/LogbookScreen';
 import TripScreen from '../screens/TripScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import GatewayScreen from '../screens/GatewayScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -18,6 +19,7 @@ const tabIcons = {
   Home: 'home',
   Monitor: 'activity',
   Logbook: 'file-text',
+  Gateway: 'wifi',
   Trips: 'map',
   Profile: 'user',
 };
@@ -76,6 +78,7 @@ const MainTabs = () => (
       options={{ title: 'FarmTrace', headerTitle: 'FarmTrace' }}
     />
     <Tab.Screen name="Monitor" component={MonitorScreen} options={{ title: 'Monitor' }} />
+    <Tab.Screen name="Gateway" component={GatewayScreen} options={{ title: 'Gateway' }} />
     <Tab.Screen name="Logbook" component={LogbookScreen} options={{ title: 'Logbook' }} />
     <Tab.Screen name="Trips" component={TripScreen} options={{ title: 'Trips' }} />
     <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
