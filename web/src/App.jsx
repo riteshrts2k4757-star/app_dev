@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import MobileFrame from './components/MobileFrame';
 import Dashboard from './pages/Dashboard';
@@ -20,15 +20,31 @@ import MobileLogbook from './pages/mobile/MobileLogbook';
 import MobileTrips from './pages/mobile/MobileTrips';
 import MobileProfile from './pages/mobile/MobileProfile';
 
+// Detect if running inside Capacitor native runtime (real Android/iOS device)
+// On native, the desktop phone-frame preview wrapper is not needed
+const isNative = () => {
+  try {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  } catch {
+    return false;
+  }
+};
+
 function App() {
+  const native = isNative();
+
   return (
-    <BrowserRouter>
+    // HashRouter: required for Capacitor because file:// scheme doesn't support
+    // HTML5 history API. All existing routes work identically — only the URL
+    // format changes from /path to /#/path.
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
 
         {/* Desktop Dashboard */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          {/* On native Android, redirect root to mobile UI */}
+          <Route index element={<Navigate to={native ? '/mobile' : '/dashboard'} replace />} />
           <Route path="dashboard"  element={<Dashboard />} />
           <Route path="monitor"    element={<Monitor />} />
           <Route path="logbook"    element={<Logbook />} />
@@ -40,34 +56,36 @@ function App() {
           <Route path="profile"    element={<Profile />} />
         </Route>
 
-        {/* Mobile Phone Preview */}
+        {/* Mobile routes:
+            - On desktop: wrapped in MobileFrame (shows simulated phone shell for preview)
+            - On native Android: MobileFrame renders without phone chrome (full screen) */}
         <Route path="/mobile" element={
-          <MobileFrame>
+          <MobileFrame native={native}>
             <MobileHome />
           </MobileFrame>
         } />
         <Route path="/mobile/monitor" element={
-          <MobileFrame>
+          <MobileFrame native={native}>
             <MobileMonitor />
           </MobileFrame>
         } />
         <Route path="/mobile/logbook" element={
-          <MobileFrame>
+          <MobileFrame native={native}>
             <MobileLogbook />
           </MobileFrame>
         } />
         <Route path="/mobile/trips" element={
-          <MobileFrame>
+          <MobileFrame native={native}>
             <MobileTrips />
           </MobileFrame>
         } />
         <Route path="/mobile/profile" element={
-          <MobileFrame>
+          <MobileFrame native={native}>
             <MobileProfile />
           </MobileFrame>
         } />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
