@@ -1,10 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Thermometer, Droplets, Wind, Battery, Zap, Clock } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 import { mockSensors, mockConnectivity, generateChartData } from '../mock/data';
+import { connectMQTT, subscribeToTelemetry } from '../services/mqtt';
 
 const Monitor = () => {
-  const chartData = useMemo(() => generateChartData(60), []);
+  const [chartData, setChartData] = useState([]);
+  const [sensorData, setSensorData] = useState(null);
+
+  useEffect(() => {
+    connectMQTT();
+
+    const unsubscribe = subscribeToTelemetry((data) => {
+      setSensorData(data);
+      setChartData(prev => {
+        const time = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const newData = [...prev, { time, temperature: data.temperature, humidity: data.humidity, ethylene: data.mq6 }];
+        if (newData.length > 60) newData.shift();
+        return newData;
+      });
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const temp = sensorData?.temperature || '--';
+  const hum = sensorData?.humidity || '--';
+  const eth = sensorData?.mq6 || '--';
+  const bat = sensorData?.battery || '--';
+  const motion = sensorData?.mpu6050 ? 'Active' : '--';
 
   return (
     <div>
@@ -15,26 +39,26 @@ const Monitor = () => {
         </div>
         <div className="flex items-center gap-8">
           <span className="badge badge-success">● Live</span>
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Updated 4s ago</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Updated {sensorData ? 'recently' : 'unknown'}</span>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="sensor-grid mb-24">
         <SensorSummary icon={<Thermometer size={18} />} bg="var(--info-bg)" color="var(--info)"
-          label="Temperature" value={`${mockSensors.temperature.value}${mockSensors.temperature.unit}`}
-          sub={`Min ${mockSensors.temperature.min}° · Max ${mockSensors.temperature.max}°`} status="normal" />
+          label="Temperature" value={`${temp}°C`}
+          sub={`Min 4° · Max 7°`} status="normal" />
         <SensorSummary icon={<Droplets size={18} />} bg="#F0F9FF" color="#0369a1"
-          label="Humidity" value={`${mockSensors.humidity.value}${mockSensors.humidity.unit}`}
-          sub={`Min ${mockSensors.humidity.min}% · Max ${mockSensors.humidity.max}%`} status="normal" />
+          label="Humidity" value={`${hum}%`}
+          sub={`Min 78% · Max 85%`} status="normal" />
         <SensorSummary icon={<Wind size={18} />} bg="#FFF7ED" color="#c2410c"
-          label="Ethylene" value={`${mockSensors.ethylene.value} ${mockSensors.ethylene.unit}`}
-          sub={`Threshold: ${mockSensors.ethylene.threshold} ppm`} status="normal" />
+          label="Ethylene" value={`${eth} ppm`}
+          sub={`Threshold: 2.0 ppm`} status="normal" />
         <SensorSummary icon={<Battery size={18} />} bg="var(--success-bg)" color="var(--success)"
-          label="Battery" value={`${mockSensors.battery.value}${mockSensors.battery.unit}`}
+          label="Battery" value={`${bat}%`}
           sub="Solar charging" status="normal" />
         <SensorSummary icon={<Zap size={18} />} bg="#FFF7ED" color="#c2410c"
-          label="Vibration" value={`${mockSensors.vibration.value} ${mockSensors.vibration.unit}`}
+          label="Vibration" value={`${motion}`}
           sub="Within normal range" status="normal" />
       </div>
 
@@ -42,7 +66,7 @@ const Monitor = () => {
       <div className="section-title">Temperature Trend</div>
       <div className="card mb-20">
         <div className="card-header">
-          <span className="card-subtitle">Last 60 minutes</span>
+          <span className="card-subtitle">Live Stream</span>
           <div className="flex gap-8">
             <button className="btn btn-sm btn-ghost">30m</button>
             <button className="btn btn-sm btn-primary">1h</button>
@@ -60,7 +84,7 @@ const Monitor = () => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickLine={false} axisLine={false} interval={9} />
+              <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
               <YAxis domain={[2, 10]} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickLine={false} axisLine={false} unit="°C" width={40} />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }} />
               <Area type="monotone" dataKey="temperature" stroke="var(--primary)" fill="url(#tempGrad)" strokeWidth={2} dot={false} />

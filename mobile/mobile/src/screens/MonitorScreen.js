@@ -1,16 +1,25 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, StatusBar, DeviceEventEmitter } from 'react-native';
 import { colors } from '../theme/colors';
 
-const sensors = [
-  { label: 'Temperature', value: '5.8°C',   min: '4.2°C', max: '7.1°C', status: 'Normal', color: colors.info },
-  { label: 'Humidity',    value: '82.4%',   min: '78%',   max: '85%',   status: 'Normal', color: '#0369a1' },
-  { label: 'Ethylene',    value: '1.2 ppm', min: null,    max: null,    status: 'Normal', color: '#c2410c' },
-  { label: 'Battery',     value: '87%',     min: null,    max: null,    status: 'Good',   color: colors.success },
-  { label: 'Vibration',   value: '0.18 g',  min: null,    max: null,    status: 'Normal', color: '#7c3aed' },
-];
-
 const MonitorScreen = () => {
+  const [sensorData, setSensorData] = useState(null);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('NewSensorData', (data) => {
+      setSensorData(data);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const sensors = [
+    { label: 'Temperature', value: sensorData?.temperature ? `${sensorData.temperature}°C` : '--', min: '4.2°C', max: '7.1°C', status: 'Normal', color: colors.info },
+    { label: 'Humidity',    value: sensorData?.humidity ? `${sensorData.humidity}%` : '--', min: '78%',   max: '85%',   status: 'Normal', color: '#0369a1' },
+    { label: 'Ethylene',    value: sensorData?.mq6 ? `${sensorData.mq6} ppm` : '--', min: null, max: null, status: 'Normal', color: '#c2410c' },
+    { label: 'Battery',     value: sensorData?.battery ? `${sensorData.battery}%` : '--', min: null, max: null, status: 'Good',   color: colors.success },
+    { label: 'Vibration',   value: sensorData?.mpu6050 ? 'Active' : '--',  min: null, max: null, status: 'Normal', color: '#7c3aed' },
+  ];
+
   return (
     <ScrollView
       style={styles.container}
@@ -22,7 +31,7 @@ const MonitorScreen = () => {
       {/* Live indicator */}
       <View style={styles.liveRow}>
         <View style={[styles.liveDot, { backgroundColor: colors.success }]} />
-        <Text style={styles.liveText}>Live · Updated 4s ago</Text>
+        <Text style={styles.liveText}>Live · Updated {sensorData ? 'recently' : 'unknown'}</Text>
       </View>
 
       {sensors.map((s, i) => (
@@ -58,6 +67,7 @@ const MonitorScreen = () => {
     </ScrollView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

@@ -79,6 +79,28 @@ const Layout = () => {
               <span className="sidebar-profile-role">{mockDriver.id} · {mockDriver.role}</span>
             </div>
           </NavLink>
+          
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.hash = '/login';
+            }} 
+            style={{
+              width: '100%',
+              marginTop: '12px',
+              padding: '10px',
+              background: 'var(--danger-bg)',
+              color: 'var(--danger)',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              fontSize: '13px'
+            }}
+          >
+            Log Out
+          </button>
         </div>
       </aside>
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar,
+  TouchableOpacity, StatusBar, Alert
 } from 'react-native';
 import { colors } from '../theme/colors';
 
@@ -41,10 +41,10 @@ const LogbookScreen = () => {
 
       {/* Controls */}
       <View style={styles.controlRow}>
-        <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={() => Alert.alert('Logbook', 'Rest period logged.')}>
           <Text style={styles.primaryBtnText}>Start Rest</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.85} onPress={() => Alert.alert('Logbook', 'Event logged.')}>
           <Text style={styles.outlineBtnText}>Add Event</Text>
         </TouchableOpacity>
       </View>

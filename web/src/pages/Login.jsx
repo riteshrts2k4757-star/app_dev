@@ -4,12 +4,37 @@ import { Leaf } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [driverId, setDriverId] = useState('DRIVER001');
-  const [pin, setPin] = useState('1234');
+  const [email, setEmail] = useState('admin@farmtrace.test');
+  const [password, setPassword] = useState('password123');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.data));
+        navigate('/dashboard');
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      setError('Network error. Backend might be offline.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,40 +65,42 @@ const Login = () => {
 
         {/* Form Card */}
         <div className="card" style={{ padding: 28 }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 20 }}>Driver Login</h2>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 20 }}>Portal Login</h2>
+
+          {error && <div style={{ color: 'var(--danger)', marginBottom: 16, fontSize: '0.875rem', textAlign: 'center' }}>{error}</div>}
 
           <form onSubmit={handleLogin}>
             <div className="form-group mb-16">
-              <label className="form-label" htmlFor="driverId">Driver ID</label>
+              <label className="form-label" htmlFor="email">Email</label>
               <input
-                id="driverId"
+                id="email"
                 className="form-input"
-                type="text"
-                value={driverId}
-                onChange={e => setDriverId(e.target.value)}
-                placeholder="Enter your driver ID"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email"
               />
             </div>
 
             <div className="form-group mb-20">
-              <label className="form-label" htmlFor="pin">PIN / Password</label>
+              <label className="form-label" htmlFor="password">Password</label>
               <input
-                id="pin"
+                id="password"
                 className="form-input"
                 type="password"
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                placeholder="Enter your PIN"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
               />
             </div>
 
-            <button type="submit" className="btn btn-primary btn-block btn-lg">
-              Login
+            <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
 
           <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 16 }}>
-            Demo credentials: DRIVER001 / 1234
+            Demo credentials: admin@farmtrace.test / password123
           </p>
         </div>
       </div>

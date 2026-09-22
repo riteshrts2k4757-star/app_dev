@@ -1,9 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, DeviceEventEmitter, Alert, PermissionsAndroid } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import WifiManager from 'react-native-wifi-reborn';
 import { colors } from '../theme/colors';
 
 const GatewayScreen = () => {
-  const isConnected = true;
+  const [sysState, setSysState] = useState({
+    nodemcuWifi: false,
+    nodemcuApi: false,
+    internet: false,
+    mqtt: false,
+    backend: false,
+  });
+
+  const [wifiName, setWifiName] = useState('Checking...');
+  const [ipAddress, setIpAddress] = useState('---.---.---.---');
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('SystemStateChange', (s) => setSysState({ ...s }));
+    
+    fetchWifiDetails();
+    const unsubscribe = NetInfo.addEventListener(state => {
+      fetchWifiDetails(state);
+    });
+
+    return () => {
+      sub.remove();
+      unsubscribe();
+    };
+  }, []);
+
+  const fetchWifiDetails = async (state) => {
+    const netState = state || await NetInfo.fetch();
+    if (netState.type === 'wifi' && netState.details) {
+      setWifiName(netState.details.ssid || 'Unknown SSID');
+      setIpAddress(netState.details.ipAddress || 'Unknown IP');
+    } else {
+      setWifiName('Not connected to WiFi');
+      setIpAddress('---.---.---.---');
+    }
+  };
+
+  const requestLocationPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'FarmTrace needs location access to scan for WiFi networks.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
+
+  const connectToGateway = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission Denied', 'Location permission is required to connect to WiFi.');
+      return;
+    }
+
+    try {
+      Alert.alert('Connecting...', 'Attempting to connect to FarmTrace_Gateway...');
+      await WifiManager.connectToProtectedSSID('FarmTrace_Gateway', 'farmtrace123', false, false);
+      Alert.alert('Success', 'Connected to Gateway WiFi');
+      fetchWifiDetails();
+    } catch (error) {
+      Alert.alert('Connection Failed', 'Could not connect to FarmTrace_Gateway. Make sure the NodeMCU is powered on.');
+      console.error(error);
+    }
+  };
+
+  const isConnected = sysState.nodemcuWifi;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -21,17 +96,14 @@ const GatewayScreen = () => {
       </View>
 
       {/* Connection Details */}
-      {isConnected && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Connection Details</Text>
-          <InfoRow label="Wi-Fi Network" value="FarmTrace_Gateway" />
-          <InfoRow label="IP Address" value="192.168.4.1" />
-          <InfoRow label="Signal Strength" value="85% — Strong" />
-          <InfoRow label="Packets Received" value="1,024" />
-          <InfoRow label="Packets Forwarded" value="1,012" />
-          <InfoRow label="Pending Upload" value="12" highlight />
-        </View>
-      )}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Connection Details</Text>
+        <InfoRow label="Wi-Fi Network" value={wifiName} />
+        <InfoRow label="IP Address" value={ipAddress} />
+        <InfoRow label="API Status" value={sysState.nodemcuApi ? 'OK' : 'Error'} />
+        <InfoRow label="Internet" value={sysState.internet ? 'Connected' : 'Offline'} />
+        <InfoRow label="MQTT Bridge" value={sysState.mqtt ? 'Active' : 'Disconnected'} highlight={!sysState.mqtt} />
+      </View>
 
       {/* Connection Steps (shown when not connected) */}
       {!isConnected && (
@@ -46,10 +118,10 @@ const GatewayScreen = () => {
 
       {/* Actions */}
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.outlineBtn}>
-          <Text style={styles.outlineBtnText}>Reconnect</Text>
+        <TouchableOpacity style={styles.outlineBtn} onPress={connectToGateway}>
+          <Text style={styles.outlineBtnText}>Auto-Connect</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.danger }]}>
+        <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.danger }]} onPress={() => Alert.alert('Gateway', 'Disconnected from Gateway.')}>
           <Text style={[styles.outlineBtnText, { color: colors.danger }]}>Disconnect</Text>
         </TouchableOpacity>
       </View>
@@ -58,6 +130,7 @@ const GatewayScreen = () => {
     </ScrollView>
   );
 };
+
 
 const InfoRow = ({ label, value, highlight }) => (
   <View style={infoStyles.row}>

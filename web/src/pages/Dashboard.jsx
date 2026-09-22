@@ -6,9 +6,10 @@ import {
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { mockTrip, mockSync, mockConnectivity, mockDriver, generateChartData } from '../mock/data';
 import { fetchSensorData, fetchShipments, queueCommand } from '../services/api';
+import { connectMQTT, subscribeToTelemetry, publishCommand } from '../services/mqtt';
 
 const Dashboard = () => {
-  const chartData = useMemo(() => generateChartData(30), []);
+  const [chartData, setChartData] = useState([]);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -17,17 +18,27 @@ const Dashboard = () => {
   const [cmdStatus, setCmdStatus] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      // Hardcoded device ID for demo
-      const data = await fetchSensorData('FARMNODE-001');
+    connectMQTT();
+
+    const loadInitialData = async () => {
+      const data = await fetchSensorData('CONTAINER-001');
       if (data && data.length > 0) {
-        setSensorData(data[0]); // Latest record
+        setSensorData(data[0]);
       }
       setLoading(false);
     };
-    loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
+    loadInitialData();
+
+    const unsubscribe = subscribeToTelemetry((data) => {
+      setSensorData(data);
+      setChartData(prev => {
+        const newData = [...prev, { time: new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), temperature: data.temperature, humidity: data.humidity }];
+        if (newData.length > 30) newData.shift();
+        return newData;
+      });
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading && !sensorData) return <div className="p-20">Loading dashboard...</div>;
@@ -38,14 +49,21 @@ const Dashboard = () => {
   const bat = sensorData?.battery ? `${sensorData.battery}%` : '--';
   const solar = sensorData?.solarVoltage ? `${sensorData.solarVoltage.toFixed(1)}V` : '--';
   
-  const motion = sensorData?.mpu6050 ? 'Normal' : '--';
+  const motion = sensorData?.mpu6050 ? 'Active' : '--';
   const mq3 = sensorData?.mq3 ? sensorData.mq3 : '--';
 
   const handleCommand = async (cmd) => {
     setCmdStatus(`Sending ${cmd}...`);
-    const res = await queueCommand('CONTAINER-001', cmd);
-    if (res.success) setCmdStatus(`${cmd} Queued!`);
-    else setCmdStatus(`Failed to queue ${cmd}`);
+    // Attempt MQTT publish first
+    const published = publishCommand('CONTAINER-001', { command: cmd, id: Date.now() });
+    if (published) {
+      setCmdStatus(`${cmd} Sent via MQTT!`);
+    } else {
+      // Fallback to API Queue
+      const res = await queueCommand('CONTAINER-001', cmd);
+      if (res.success) setCmdStatus(`${cmd} Queued!`);
+      else setCmdStatus(`Failed to queue ${cmd}`);
+    }
     setTimeout(() => setCmdStatus(null), 3000);
   };
 

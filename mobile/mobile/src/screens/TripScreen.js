@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar,
+  TouchableOpacity, StatusBar, Alert
 } from 'react-native';
 import { colors } from '../theme/colors';
 
@@ -35,14 +35,14 @@ const TripScreen = () => {
     >
       <StatusBar barStyle="dark-content" backgroundColor={colors.card} />
 
-      <TouchableOpacity style={styles.newTripBtn} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.newTripBtn} activeOpacity={0.85} onPress={() => Alert.alert('New Trip', 'Creating a new trip...')}>
         <Text style={styles.newTripBtnText}>+ Start New Trip</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>ALL SHIPMENTS</Text>
 
       {trips.map(trip => (
-        <TouchableOpacity key={trip.id} style={styles.tripCard} activeOpacity={0.85}>
+        <TouchableOpacity key={trip.id} style={styles.tripCard} activeOpacity={0.85} onPress={() => Alert.alert('Trip Info', `Selected trip ${trip.id}`)}>
           <View style={styles.tripHeader}>
             <Text style={styles.tripId}>{trip.id}</Text>
             <View

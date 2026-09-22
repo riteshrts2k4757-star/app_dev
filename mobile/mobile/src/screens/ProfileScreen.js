@@ -1,11 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar,
+  TouchableOpacity, StatusBar, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
 const ProfileScreen = () => {
+  const navigation = useNavigation();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('userData').then(data => {
+      if (data) setUser(JSON.parse(data));
+    });
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: async () => {
+          await AsyncStorage.removeItem('userToken');
+          await AsyncStorage.removeItem('userData');
+          navigation.replace('Login');
+        }
+      }
+    ]);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -17,16 +40,16 @@ const ProfileScreen = () => {
       {/* Avatar + Name */}
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>RK</Text>
+          <Text style={styles.avatarText}>{user?.name ? user.name.charAt(0).toUpperCase() : 'RK'}</Text>
         </View>
-        <Text style={styles.name}>Rajesh Kumar</Text>
-        <Text style={styles.role}>DRIVER001 · Driver</Text>
+        <Text style={styles.name}>{user?.name || 'Rajesh Kumar'}</Text>
+        <Text style={styles.role}>{user?.driverId || 'DRIVER001'} · Driver</Text>
       </View>
 
       {/* Info Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Personal Information</Text>
-        <InfoRow label="Phone"        value="+91 9876543210" />
+        <InfoRow label="Email"        value={user?.email || 'driver@farmtrace.test'} />
         <InfoRow label="Vehicle"      value="JH10AB1234" />
         <InfoRow label="Current Trip" value="FT-2026-001" />
         <InfoRow label="Driving Today" value="04h 32m" last />
@@ -51,12 +74,16 @@ const ProfileScreen = () => {
 
       {/* Settings Links */}
       <View style={styles.card}>
-        <SettingsRow label="Gateway Settings" />
-        <SettingsRow label="MQTT Configuration" />
-        <SettingsRow label="Alert Thresholds" />
-        <SettingsRow label="Export Data" />
-        <SettingsRow label="About FarmTrace" last />
+        <SettingsRow label="Gateway Settings" onPress={() => Alert.alert('Settings', 'Gateway Settings coming soon')} />
+        <SettingsRow label="MQTT Configuration" onPress={() => Alert.alert('Settings', 'MQTT config is managed by the system.')} />
+        <SettingsRow label="Alert Thresholds" onPress={() => Alert.alert('Settings', 'Alert thresholds coming soon')} />
+        <SettingsRow label="Export Data" onPress={() => Alert.alert('Settings', 'Data exported to downloads')} />
+        <SettingsRow label="About FarmTrace" onPress={() => Alert.alert('About', 'FarmTrace v1.0.0')} last />
       </View>
+
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Log Out</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -68,10 +95,11 @@ const InfoRow = ({ label, value, last }) => (
   </View>
 );
 
-const SettingsRow = ({ label, last }) => (
+const SettingsRow = ({ label, last, onPress }) => (
   <TouchableOpacity
     style={[settingsStyles.row, !last && { borderBottomWidth: 1, borderBottomColor: colors.borderLight }]}
     activeOpacity={0.7}
+    onPress={onPress}
   >
     <Text style={settingsStyles.label}>{label}</Text>
     <Text style={settingsStyles.chevron}>›</Text>
@@ -172,6 +200,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 4,
     fontWeight: '500',
+  },
+  logoutBtn: {
+    backgroundColor: colors.dangerBg,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoutText: {
+    color: colors.danger,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

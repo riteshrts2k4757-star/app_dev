@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,42 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  DeviceEventEmitter,
+  Alert,
 } from 'react-native';
 import { colors } from '../theme/colors';
 
 const DashboardScreen = () => {
   const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const [sensorData, setSensorData] = useState(null);
+  const [sysState, setSysState] = useState({
+    nodemcuWifi: false,
+    nodemcuApi: false,
+    internet: false,
+    mqtt: false,
+    backend: false,
+  });
+  
+  useEffect(() => {
+    const dataSub = DeviceEventEmitter.addListener('NewSensorData', (data) => {
+      setSensorData(data);
+    });
+    const stateSub = DeviceEventEmitter.addListener('SystemStateChange', (s) => {
+      setSysState({ ...s });
+    });
+
+    return () => {
+      dataSub.remove();
+      stateSub.remove();
+    };
+  }, []);
+
+  const temp = sensorData?.temperature ? `${sensorData.temperature}°C` : '--';
+  const hum = sensorData?.humidity ? `${sensorData.humidity}%` : '--';
+  const eth = sensorData?.mq6 ? `${sensorData.mq6} ppm` : '--';
+  const bat = sensorData?.battery ? `${sensorData.battery}%` : '--';
 
   return (
     <ScrollView
@@ -38,17 +67,17 @@ const DashboardScreen = () => {
         <View style={styles.statusDot} />
         <View style={{ flex: 1 }}>
           <Text style={styles.statusTitle}>Container Status: SAFE</Text>
-          <Text style={styles.statusSub}>Last synchronized 12 seconds ago</Text>
+          <Text style={styles.statusSub}>Last synchronized {sensorData ? 'recently' : 'unknown'}</Text>
         </View>
       </View>
 
       {/* Sensor Cards */}
       <Text style={styles.sectionLabel}>LIVE SENSOR READINGS</Text>
       <View style={styles.sensorGrid}>
-        <SensorCard label="Temperature" value="5.8°C" status="Normal" color={colors.info} />
-        <SensorCard label="Humidity"    value="82.4%" status="Normal" color="#0369a1" />
-        <SensorCard label="Ethylene"    value="1.2 ppm" status="Normal" color="#c2410c" />
-        <SensorCard label="Battery"     value="87%"   status="Good"   color={colors.success} />
+        <SensorCard label="Temperature" value={temp} status="Normal" color={colors.info} />
+        <SensorCard label="Humidity"    value={hum} status="Normal" color="#0369a1" />
+        <SensorCard label="Ethylene"    value={eth} status="Normal" color="#c2410c" />
+        <SensorCard label="Battery"     value={bat}   status="Good"   color={colors.success} />
       </View>
 
       {/* Driver Status */}
@@ -65,10 +94,10 @@ const DashboardScreen = () => {
       </View>
 
       <View style={styles.driverRow}>
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={() => Alert.alert('Rest Logged', 'Your rest period has started.')}>
           <Text style={styles.primaryButtonText}>Start Rest</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => Alert.alert('Add Event', 'Event logging feature coming soon.')}>
           <Text style={styles.outlineButtonText}>Add Event</Text>
         </TouchableOpacity>
       </View>
@@ -76,10 +105,10 @@ const DashboardScreen = () => {
       {/* Connectivity */}
       <Text style={styles.sectionLabel}>CONNECTIVITY</Text>
       <View style={styles.card}>
-        <ConnRow label="Gateway"  status="Connected" ok />
-        <ConnRow label="MQTT"     status="Connected" ok />
-        <ConnRow label="Internet" status="Connected" ok />
-        <ConnRow label="Backend"  status="Connected" ok last />
+        <ConnRow label="Gateway"  status={sysState.nodemcuWifi ? 'Connected' : 'Offline'} ok={sysState.nodemcuWifi} />
+        <ConnRow label="MQTT"     status={sysState.mqtt ? 'Connected' : 'Offline'} ok={sysState.mqtt} />
+        <ConnRow label="Internet" status={sysState.internet ? 'Connected' : 'Offline'} ok={sysState.internet} />
+        <ConnRow label="Backend"  status={sysState.backend ? 'Connected' : 'Offline'} ok={sysState.backend} last />
       </View>
     </ScrollView>
   );
